@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# Configuration
+OUTPUT="project_codebase.txt"
+TREE_OUTPUT="project_tree.txt"
+
+# Clean up previous dumps
+rm -f "$OUTPUT" "$TREE_OUTPUT"
+touch "$OUTPUT"
+
+echo "⚡ Starting MinC Auto Supply Codebase Dump..."
+
+# 1. Generate Tree Structure (exclude noise directories)
+echo "Generating tree..."
+tree -a \
+    -I ".git|node_modules|.next|__pycache__|venv|.venv|.DS_Store|vendor|Assets|Docs|tests" \
+    --prune \
+    > "$TREE_OUTPUT"
+
+# 2. Find and Dump File Contents
+echo "Dumping file contents..."
+
+# Strategy: Include only files needed for LLM codebase context
+# - All .php (application code)
+# - Only MinC.sql and SETUP_DATABASE.sql (schema + migrations)
+# - .yml/.yaml (CI/deploy config)
+# - Root .md files (AGENTS.md)
+# Exclude: Docs/, tests/, Assets/, redundant SQL, this script, generated outputs
+find . -type f \
+    \( -name "*.php" \
+    -o -name "*.yml" \
+    -o -name "*.yaml" \) \
+    -not -path "*/node_modules/*" \
+    -not -path "*/.git/*" \
+    -not -path "*/vendor/*" \
+    -not -path "*/Docs/*" \
+    -not -path "*/tests/*" \
+    -not -path "*/Assets/*" \
+    -not -path "*/.github/*" \
+    -o -name "MinC.sql" \
+    -o -name "SETUP_DATABASE.sql" \
+    -o -name "AGENTS.md" \
+    -o -name "README.md" \
+    | while read -r file; do
+
+    # Get clean relative path (remove ./ at start)
+    clean_path="${file#./}"
+
+    echo "Processing: $clean_path"
+
+    echo "--- START OF FILE ${clean_path} ---" >> "$OUTPUT"
+    echo "" >> "$OUTPUT"
+
+    cat "$file" >> "$OUTPUT"
+
+    echo "" >> "$OUTPUT"
+    echo "--- END OF FILE ${clean_path} ---" >> "$OUTPUT"
+    echo "" >> "$OUTPUT"
+    echo "================================================================================" >> "$OUTPUT"
+    echo "" >> "$OUTPUT"
+
+done
+
+echo "✅ Done!"
+echo "📂 Tree structure saved to: $TREE_OUTPUT"
+echo "📄 Code content saved to:   $OUTPUT"

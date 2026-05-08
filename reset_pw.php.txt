@@ -1,0 +1,28 @@
+<?php
+// Include your database connection
+require_once 'database/connect_database.php';
+
+// The password we want to set
+$email = 'root@gmail.com';
+$plain_password = 'password123';
+
+// Generate a completely fresh, correct hash using PHP
+$new_hash = password_hash($plain_password, PASSWORD_BCRYPT);
+
+try {
+    // Update the database
+    $stmt = $pdo->prepare("UPDATE users SET password = :hash, user_status = 'active' WHERE email = :email");
+    $stmt->execute([
+        ':hash' => $new_hash,
+        ':email' => $email
+    ]);
+
+    echo "<h1>Success!</h1>";
+    echo "<p>The password for <b>$email</b> has been reset to: <b>$plain_password</b></p>";
+    echo "<p>The new correct database hash is: <br><code>$new_hash</code></p>";
+    echo "<br><a href='index.php'>Go back and Login</a>";
+
+} catch (PDOException $e) {
+    echo "Error updating password: " . $e->getMessage();
+}
+?>
